@@ -1,7 +1,38 @@
 import os
+from datetime import datetime
 
 import cv2
+import pandas as pd
 from deepface import DeepFace
+
+ATTENDANCE_FILE = "attendance.xlsx"
+
+
+def log_attendance(student_name):
+    now = datetime.now()
+    date = now.strftime("%Y-%m-%d")
+    time = now.strftime("%H:%M:%S")
+
+    # If file exists, load it. Otherwise, create new DataFrame
+    if os.path.exists(ATTENDANCE_FILE):
+        df = pd.read_excel(ATTENDANCE_FILE)
+    else:
+        df = pd.DataFrame(columns=["Date", "Time", "Student", "Status"])
+
+    # Avoid duplicate entries (same student, same date)
+    if not ((df["Date"] == date) & (df["Student"] == student_name)).any():
+        new_entry = pd.DataFrame(
+            [[date, time, student_name, "Present"]],
+            columns=["Date", "Time", "Student", "Status"],
+        )
+        df = pd.concat([df, new_entry], ignore_index=True)
+
+        # Save back to Excel
+        df.to_excel(ATTENDANCE_FILE, index=False)
+        print(f"[LOGGED] {student_name} marked present at {time}")
+    else:
+        print(f"[SKIP] {student_name} already marked for {date}")
+
 
 # Path to dataset
 DATASET_PATH = "dataset"
@@ -51,6 +82,7 @@ while True:
                 2,
                 cv2.LINE_AA,
             )
+            log_attendance(student_name)
         else:
             cv2.putText(
                 frame,
